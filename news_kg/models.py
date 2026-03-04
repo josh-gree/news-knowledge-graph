@@ -1,6 +1,7 @@
 from datetime import datetime
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
 
 # Stub — fields to be added when temporal enrichment is implemented.
@@ -21,3 +22,15 @@ class Article(BaseModel):
     url: str
     temporal: TemporalAnnotation | None = None
     entities: EntityAnnotation | None = None
+
+
+class GuardianArticle(Article):
+    source: Literal["guardian"] = "guardian"
+    headline: str
+    standfirst: str
+    byline: str
+    dateline: str
+
+
+AnyArticle = Annotated[GuardianArticle, Field(discriminator="source")]
+article_adapter = TypeAdapter(AnyArticle)
