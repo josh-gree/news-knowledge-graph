@@ -66,7 +66,7 @@ def test_article_dict_round_trip_with_enrichments():
 
 def test_article_missing_required_fields():
     with pytest.raises(ValidationError):
-        Article(text="only text")  # missing date
+        Article(text="only text")  # type: ignore[call-arg]
 
     with pytest.raises(ValidationError):
-        Article(date=datetime(2024, 1, 1, tzinfo=UTC))  # missing text
+        Article(date=datetime(2024, 1, 1, tzinfo=UTC))  # type: ignore[call-arg]
