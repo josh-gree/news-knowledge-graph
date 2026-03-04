@@ -25,10 +25,7 @@ def save_article_task(article: AnyArticle, store: FilesystemStore) -> str:
 
 @flow
 def run_entity_pipeline(urls: list[str], store: FilesystemStore) -> list[str]:
-    article_ids = []
-    for url in urls:
-        article = fetch_article_task(url)
-        enriched = enrich_entities_task(article)
-        article_id = save_article_task(enriched, store)
-        article_ids.append(article_id)
-    return article_ids
+    fetch_futures = [fetch_article_task.submit(url) for url in urls]
+    enrich_futures = [enrich_entities_task.submit(f) for f in fetch_futures]
+    save_futures = [save_article_task.submit(e, store) for e in enrich_futures]
+    return [f.result() for f in save_futures]
