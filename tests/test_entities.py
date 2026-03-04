@@ -37,7 +37,7 @@ def _make_gliner_result(people=None, organisations=None, locations=None):
 def test_returns_entity_annotation(enricher, article):
     mock_gliner = MagicMock()
     mock_gliner.extract_entities.return_value = _make_gliner_result(
-        people=["Barack Obama"], locations=["London"]
+        people=["Barack Obama"]
     )
 
     mock_choose_instance = MagicMock(
@@ -46,7 +46,7 @@ def test_returns_entity_annotation(enricher, article):
     with patch("news_kg.entities._get_gliner", return_value=mock_gliner):
         with patch.object(enricher, "clean") as mock_clean:
             mock_clean.return_value = dspy.Prediction(
-                people=["Barack Obama"], organisations=[], locations=["London"]
+                people=["Barack Obama"], organisations=[], locations=[]
             )
             with patch(
                 "news_kg.entities.dspy.Predict", return_value=mock_choose_instance
@@ -63,7 +63,9 @@ def test_returns_entity_annotation(enricher, article):
                     result = enricher(article)
 
     assert isinstance(result, EntityAnnotation)
-    assert any(e.name == "Barack Obama" for e in result.entities)
+    assert len(result.entities) == 1
+    assert result.entities[0].name == "Barack Obama"
+    assert result.entities[0].wikidata_id == "Q76"
 
 
 def test_short_circuits_if_already_enriched(enricher, make_article):
@@ -145,6 +147,37 @@ def test_entity_excluded_when_no_context(enricher, make_article):
     mock_search.assert_not_called()
 
 
+def test_entity_excluded_when_q_id_hallucinated(enricher, article):
+    mock_gliner = MagicMock()
+    mock_gliner.extract_entities.return_value = _make_gliner_result(
+        people=["Barack Obama"]
+    )
+
+    mock_choose_instance = MagicMock(
+        return_value=dspy.Prediction(is_match=True, entity_num=9999)
+    )
+    with patch("news_kg.entities._get_gliner", return_value=mock_gliner):
+        with patch.object(enricher, "clean") as mock_clean:
+            mock_clean.return_value = dspy.Prediction(
+                people=["Barack Obama"], organisations=[], locations=[]
+            )
+            with patch(
+                "news_kg.entities.dspy.Predict", return_value=mock_choose_instance
+            ):
+                with patch("news_kg.entities.search_wikidata") as mock_search:
+                    mock_search.return_value = [
+                        {
+                            "id": "Q76",
+                            "label": "Barack Obama",
+                            "description": "",
+                            "aliases": [],
+                        }
+                    ]
+                    result = enricher(article)
+
+    assert result.entities == []
+
+
 def test_entity_excluded_when_search_raises(enricher, article):
     mock_gliner = MagicMock()
     mock_gliner.extract_entities.return_value = _make_gliner_result(
@@ -166,6 +199,7 @@ def test_entity_excluded_when_search_raises(enricher, article):
 
 @pytest.mark.live
 def test_enrich_entities_real_article():
+    # Requires ANTHROPIC_API_KEY in .env
     import dspy
     from dotenv import load_dotenv
 
