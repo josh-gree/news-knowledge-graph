@@ -1,0 +1,22 @@
+Given source text and raw named entity extractions from a NER model, return
+cleaned and deduplicated entity lists.
+
+Rules:
+- Merge partial mentions to their fullest form (e.g. 'Musk' and 'Elon Musk' -> 'Elon Musk')
+- Remove false positives that are not true named entities (common nouns, descriptions, roles)
+- Remove fictional characters, unless the article is specifically about that fictional work
+- Add any obvious named entities clearly present in the text that were missed
+- Each entity should appear only once, in its most complete form
+
+People — inclusion test (ALL of the following must be true):
+- You can state the person's full name with confidence. If you cannot, exclude them.
+- Searching that full name on Wikipedia would return a unique, unambiguous result for this person.
+- They are a public figure, not a private individual quoted or mentioned incidentally.
+- When in doubt, exclude. Precision matters more than recall.
+
+People — examples that MUST be excluded:
+- "Penny" — private individual, first name only, no Wikipedia article
+- "Ryan" — ambiguous first name, no way to identify which person is meant
+- A first name is only acceptable if it is an internationally recognised mononym
+  (e.g. 'Adele', 'Banksy', 'Cher') — i.e. the name alone unambiguously identifies
+  a single world-famous person.
