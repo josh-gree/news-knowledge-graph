@@ -2,7 +2,7 @@ import hashlib
 from collections.abc import Iterator
 from pathlib import Path
 
-from news_kg.models import AnyArticle, Article, article_adapter
+from news_kg.models import AnyArticle, article_adapter
 
 
 def _article_id(url: str) -> str:
@@ -18,7 +18,7 @@ class FilesystemStore:
     def _path(self, article_id: str) -> Path:
         return self._articles / f"{article_id}.json"
 
-    def save(self, article: Article) -> str:
+    def save(self, article: AnyArticle) -> str:
         article_id = _article_id(article.url)
         self._path(article_id).write_text(article.model_dump_json())
         return article_id

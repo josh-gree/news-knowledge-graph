@@ -26,11 +26,12 @@ class Article(BaseModel):
 
 class GuardianArticle(Article):
     source: Literal["guardian"] = "guardian"
-    headline: str
-    standfirst: str
-    byline: str
-    dateline: str
+    headline: str = Field(min_length=1)
+    standfirst: str = Field(min_length=1)
+    byline: str = Field(min_length=1)
+    dateline: str = Field(min_length=1)
 
 
+# Union will grow as sources are added; `source` discriminator enables round-tripping.
 AnyArticle = Annotated[GuardianArticle, Field(discriminator="source")]
 article_adapter = TypeAdapter(AnyArticle)
