@@ -3,7 +3,12 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
-from news_kg.models import Article, EntityAnnotation, TemporalAnnotation
+from news_kg.models import (
+    Article,
+    EntityAnnotation,
+    TemporalAnnotation,
+    article_adapter,
+)
 
 
 def test_article_construction(make_article):
@@ -44,7 +49,7 @@ def test_entity_annotation_is_frozen():
 
 def test_article_dict_round_trip(make_article):
     article = make_article()
-    restored = Article.model_validate(article.model_dump())
+    restored = article_adapter.validate_python(article.model_dump())
     assert restored == article
 
 
@@ -53,7 +58,7 @@ def test_article_dict_round_trip_with_enrichments(make_article):
         temporal=TemporalAnnotation(),
         entities=EntityAnnotation(),
     )
-    restored = Article.model_validate(article.model_dump())
+    restored = article_adapter.validate_python(article.model_dump())
     assert restored == article
 
 
