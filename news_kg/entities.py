@@ -66,10 +66,10 @@ class _WikidataCandidate(dspy.Signature):
 
 def _format_candidates(candidates: list[dict]) -> str:
     lines = []
-    for i, c in enumerate(candidates, 1):
+    for c in candidates:
         aliases = ", ".join(c["aliases"]) if c["aliases"] else "none"
         lines.append(
-            f"{i}. [{c['id']}] {c['label']}\n"
+            f"[{c['id']}] {c['label']}\n"
             f"   Description: {c['description'] or 'N/A'}\n"
             f"   Aliases: {aliases}"
         )
@@ -84,7 +84,6 @@ class EntityEnricher(dspy.Module):
         self.search_limit = search_limit
         self.max_workers = max_workers
         self.clean = dspy.Predict(_CleanEntities)
-        self.choose = dspy.Predict(_WikidataCandidate)
 
     def forward(self, article: AnyArticle) -> EntityAnnotation:
         if article.entities is not None:
@@ -105,31 +104,40 @@ class EntityEnricher(dspy.Module):
             raw_locations=raw_locations,
         )
 
-        all_entities = [
-            *(cleaned.people or []),
-            *(cleaned.organisations or []),
-            *(cleaned.locations or []),
-        ]
+        all_entities = list(
+            dict.fromkeys(
+                [
+                    *(cleaned.people or []),
+                    *(cleaned.organisations or []),
+                    *(cleaned.locations or []),
+                ]
+            )
+        )
 
         def resolve(name: str) -> ResolvedEntity:
-            context = extract_sentence_context(article.text, name)
-            candidates = search_wikidata(name, limit=self.search_limit)
-            if not candidates:
+            try:
+                context = extract_sentence_context(article.text, name)
+                if not context:
+                    return ResolvedEntity(name=name, wikidata_id=None)
+                candidates = search_wikidata(name, limit=self.search_limit)
+                if not candidates:
+                    return ResolvedEntity(name=name, wikidata_id=None)
+                valid_ids = {c["id"] for c in candidates}
+                choose = dspy.Predict(_WikidataCandidate)
+                result = choose(
+                    entity_name=name,
+                    context=context,
+                    candidates=_format_candidates(candidates),
+                )
+                if not result.is_match:
+                    return ResolvedEntity(name=name, wikidata_id=None)
+                q_id = f"Q{result.entity_num}"
+                if q_id not in valid_ids:
+                    return ResolvedEntity(name=name, wikidata_id=None)
+                return ResolvedEntity(name=name, wikidata_id=q_id)
+            except Exception:
                 return ResolvedEntity(name=name, wikidata_id=None)
-            valid_ids = {c["id"] for c in candidates}
-            result = self.choose(
-                entity_name=name,
-                context=context,
-                candidates=_format_candidates(candidates),
-            )
-            if not result.is_match:
-                return ResolvedEntity(name=name, wikidata_id=None)
-            q_id = f"Q{result.entity_num}"
-            if q_id not in valid_ids:
-                return ResolvedEntity(name=name, wikidata_id=None)
-            return ResolvedEntity(name=name, wikidata_id=q_id)
 
-        resolved: list[ResolvedEntity] = []
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             futures = {executor.submit(resolve, name): name for name in all_entities}
             resolved_map: dict[str, ResolvedEntity] = {}

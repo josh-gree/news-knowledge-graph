@@ -40,13 +40,17 @@ def test_returns_entity_annotation(enricher, article):
         people=["Barack Obama"], locations=["London"]
     )
 
+    mock_choose_instance = MagicMock(
+        return_value=dspy.Prediction(is_match=True, entity_num=76)
+    )
     with patch("news_kg.entities._get_gliner", return_value=mock_gliner):
         with patch.object(enricher, "clean") as mock_clean:
             mock_clean.return_value = dspy.Prediction(
                 people=["Barack Obama"], organisations=[], locations=["London"]
             )
-            with patch.object(enricher, "choose") as mock_choose:
-                mock_choose.return_value = dspy.Prediction(is_match=True, entity_num=76)
+            with patch(
+                "news_kg.entities.dspy.Predict", return_value=mock_choose_instance
+            ):
                 with patch("news_kg.entities.search_wikidata") as mock_search:
                     mock_search.return_value = [
                         {
@@ -79,13 +83,17 @@ def test_wikidata_id_is_none_when_no_match(enricher, article):
         people=["Barack Obama"]
     )
 
+    mock_choose_instance = MagicMock(
+        return_value=dspy.Prediction(is_match=False, entity_num=0)
+    )
     with patch("news_kg.entities._get_gliner", return_value=mock_gliner):
         with patch.object(enricher, "clean") as mock_clean:
             mock_clean.return_value = dspy.Prediction(
                 people=["Barack Obama"], organisations=[], locations=[]
             )
-            with patch.object(enricher, "choose") as mock_choose:
-                mock_choose.return_value = dspy.Prediction(is_match=False, entity_num=0)
+            with patch(
+                "news_kg.entities.dspy.Predict", return_value=mock_choose_instance
+            ):
                 with patch("news_kg.entities.search_wikidata") as mock_search:
                     mock_search.return_value = [
                         {
@@ -113,6 +121,44 @@ def test_wikidata_id_is_none_when_no_candidates(enricher, article):
             )
             with patch("news_kg.entities.search_wikidata") as mock_search:
                 mock_search.return_value = []
+                result = enricher(article)
+
+    assert result.entities[0].wikidata_id is None
+
+
+def test_wikidata_id_is_none_when_no_context(enricher, make_article):
+    article = make_article(text="Unrelated text with no entity mentions.")
+    mock_gliner = MagicMock()
+    mock_gliner.extract_entities.return_value = _make_gliner_result(
+        people=["Barack Obama"]
+    )
+
+    with patch("news_kg.entities._get_gliner", return_value=mock_gliner):
+        with patch.object(enricher, "clean") as mock_clean:
+            mock_clean.return_value = dspy.Prediction(
+                people=["Barack Obama"], organisations=[], locations=[]
+            )
+            with patch("news_kg.entities.search_wikidata") as mock_search:
+                result = enricher(article)
+
+    assert result.entities[0].wikidata_id is None
+    mock_search.assert_not_called()
+
+
+def test_wikidata_id_is_none_when_search_raises(enricher, article):
+    mock_gliner = MagicMock()
+    mock_gliner.extract_entities.return_value = _make_gliner_result(
+        people=["Barack Obama"]
+    )
+
+    with patch("news_kg.entities._get_gliner", return_value=mock_gliner):
+        with patch.object(enricher, "clean") as mock_clean:
+            mock_clean.return_value = dspy.Prediction(
+                people=["Barack Obama"], organisations=[], locations=[]
+            )
+            with patch(
+                "news_kg.entities.search_wikidata", side_effect=Exception("timeout")
+            ):
                 result = enricher(article)
 
     assert result.entities[0].wikidata_id is None
