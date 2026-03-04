@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from prefect import flow, task
 
 from news_kg.entities import EntityEnricher
@@ -19,13 +21,13 @@ def enrich_entities_task(article: AnyArticle) -> AnyArticle:
 
 
 @task
-def save_article_task(article: AnyArticle, store: FilesystemStore) -> str:
-    return store.save(article)
+def save_article_task(article: AnyArticle, root: Path) -> str:
+    return FilesystemStore(root).save(article)
 
 
 @flow
-def run_entity_pipeline(urls: list[str], store: FilesystemStore) -> list[str]:
+def run_entity_pipeline(urls: list[str], root: Path) -> list[str]:
     fetch_futures = [fetch_article_task.submit(url) for url in urls]
     enrich_futures = [enrich_entities_task.submit(f) for f in fetch_futures]
-    save_futures = [save_article_task.submit(e, store) for e in enrich_futures]
+    save_futures = [save_article_task.submit(e, root) for e in enrich_futures]
     return [f.result() for f in save_futures]

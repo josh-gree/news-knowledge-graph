@@ -13,17 +13,16 @@ def test_run_entity_pipeline_fetches_enriches_saves(make_article, tmp_path):
     )
 
     mock_enricher_instance = MagicMock(return_value=annotation)
-    store = FilesystemStore(tmp_path)
 
     with patch("news_kg.flows.pipeline._fetch_article", return_value=article):
         with patch(
             "news_kg.flows.pipeline.EntityEnricher",
             return_value=mock_enricher_instance,
         ):
-            result = run_entity_pipeline([url], store)
+            result = run_entity_pipeline([url], tmp_path)
 
     assert len(result) == 1
-    saved = store.load(result[0])
+    saved = FilesystemStore(tmp_path).load(result[0])
     assert saved.entities == annotation
 
 
@@ -35,16 +34,14 @@ def test_run_entity_pipeline_processes_multiple_urls(make_article, tmp_path):
     articles = [make_article(url=url) for url in urls]
     annotation = EntityAnnotation(entities=[])
 
-    fetch_calls = iter(articles)
     mock_enricher_instance = MagicMock(return_value=annotation)
-    store = FilesystemStore(tmp_path)
 
-    with patch("news_kg.flows.pipeline._fetch_article", side_effect=fetch_calls):
+    with patch("news_kg.flows.pipeline._fetch_article", side_effect=articles):
         with patch(
             "news_kg.flows.pipeline.EntityEnricher",
             return_value=mock_enricher_instance,
         ):
-            result = run_entity_pipeline(urls, store)
+            result = run_entity_pipeline(urls, tmp_path)
 
     assert len(result) == 2
 
