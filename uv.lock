@@ -1686,6 +1686,18 @@ wheels = [
 ]
 
 [[package]]
+name = "neo4j"
+version = "6.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytz" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1b/01/d6ce65e4647f6cb2b9cca3b813978f7329b54b4e36660aaec1ddf0ccce7a/neo4j-6.1.0.tar.gz", hash = "sha256:b5dde8c0d8481e7b6ae3733569d990dd3e5befdc5d452f531ad1884ed3500b84", size = 239629, upload-time = "2026-01-12T11:27:34.777Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/70/5c/ee71e2dd955045425ef44283f40ba1da67673cf06404916ca2950ac0cd39/neo4j-6.1.0-py3-none-any.whl", hash = "sha256:3bd93941f3a3559af197031157220af9fd71f4f93a311db687bd69ffa417b67d", size = 325326, upload-time = "2026-01-12T11:27:33.196Z" },
+]
+
+[[package]]
 name = "nest-asyncio"
 version = "1.6.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1713,6 +1725,7 @@ dependencies = [
     { name = "gliner2" },
     { name = "httpx" },
     { name = "lxml" },
+    { name = "neo4j" },
     { name = "prefect" },
     { name = "pydantic" },
     { name = "typer" },
@@ -1736,6 +1749,7 @@ requires-dist = [
     { name = "gliner2", specifier = ">=1.2.4" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "lxml", specifier = ">=6.0.2" },
+    { name = "neo4j", specifier = ">=6.1.0" },
     { name = "prefect", specifier = ">=3.6.20" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "typer", specifier = ">=0.24.1" },
