@@ -18,5 +18,6 @@ class Article(BaseModel):
 
     text: str
     date: datetime
+    url: str
     temporal: TemporalAnnotation | None = None
     entities: EntityAnnotation | None = None
