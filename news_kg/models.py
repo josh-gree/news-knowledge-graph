@@ -9,9 +9,17 @@ class TemporalAnnotation(BaseModel):
     model_config = ConfigDict(frozen=True)
 
 
-# Stub — fields to be added when entity enrichment is implemented.
+class ResolvedEntity(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    name: str
+    wikidata_id: str | None = None
+
+
 class EntityAnnotation(BaseModel):
     model_config = ConfigDict(frozen=True)
+
+    entities: list[ResolvedEntity] = []
 
 
 class Article(BaseModel):

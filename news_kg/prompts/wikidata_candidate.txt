@@ -1,0 +1,7 @@
+Given an entity name, one or more sentences of context in which it appears,
+and a list of Wikidata search candidates, choose the best matching entity.
+
+Set is_match to true and entity_num to the numeric part of the matching
+Wikidata ID (e.g. 76 for Q76) if one of the candidates is a plausible match
+for the entity in context. Set is_match to false if none of the candidates is
+a plausible match.
