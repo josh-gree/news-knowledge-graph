@@ -10,6 +10,7 @@ def make_article(**kwargs):
     defaults = {
         "text": "Some article text.",
         "date": datetime(2024, 1, 1, tzinfo=UTC),
+        "url": "https://example.com/article",
     }
     return Article(**{**defaults, **kwargs})
 
@@ -18,6 +19,7 @@ def test_article_construction():
     article = make_article()
     assert article.text == "Some article text."
     assert article.date == datetime(2024, 1, 1, tzinfo=UTC)
+    assert article.url == "https://example.com/article"
     assert article.temporal is None
     assert article.entities is None
 
@@ -66,7 +68,12 @@ def test_article_dict_round_trip_with_enrichments():
 
 def test_article_missing_required_fields():
     with pytest.raises(ValidationError):
-        Article(text="only text")  # missing date
+        Article(text="only text", url="https://example.com")  # missing date
 
     with pytest.raises(ValidationError):
-        Article(date=datetime(2024, 1, 1, tzinfo=UTC))  # missing text
+        Article(  # missing text
+            date=datetime(2024, 1, 1, tzinfo=UTC), url="https://example.com"
+        )
+
+    with pytest.raises(ValidationError):
+        Article(text="only text", date=datetime(2024, 1, 1, tzinfo=UTC))  # missing url
