@@ -145,5 +145,9 @@ class EntityEnricher(dspy.Module):
                 entity = future.result()
                 resolved_map[entity.name] = entity
 
-        resolved = [resolved_map[name] for name in all_entities if name in resolved_map]
+        resolved = [
+            resolved_map[name]
+            for name in all_entities
+            if name in resolved_map and resolved_map[name].wikidata_id is not None
+        ]
         return EntityAnnotation(entities=resolved)

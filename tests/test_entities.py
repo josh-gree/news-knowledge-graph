@@ -77,7 +77,7 @@ def test_short_circuits_if_already_enriched(enricher, make_article):
     assert result is existing
 
 
-def test_wikidata_id_is_none_when_no_match(enricher, article):
+def test_entity_excluded_when_no_match(enricher, article):
     mock_gliner = MagicMock()
     mock_gliner.extract_entities.return_value = _make_gliner_result(
         people=["Barack Obama"]
@@ -105,10 +105,10 @@ def test_wikidata_id_is_none_when_no_match(enricher, article):
                     ]
                     result = enricher(article)
 
-    assert result.entities[0].wikidata_id is None
+    assert result.entities == []
 
 
-def test_wikidata_id_is_none_when_no_candidates(enricher, article):
+def test_entity_excluded_when_no_candidates(enricher, article):
     mock_gliner = MagicMock()
     mock_gliner.extract_entities.return_value = _make_gliner_result(
         people=["Barack Obama"]
@@ -123,10 +123,10 @@ def test_wikidata_id_is_none_when_no_candidates(enricher, article):
                 mock_search.return_value = []
                 result = enricher(article)
 
-    assert result.entities[0].wikidata_id is None
+    assert result.entities == []
 
 
-def test_wikidata_id_is_none_when_no_context(enricher, make_article):
+def test_entity_excluded_when_no_context(enricher, make_article):
     article = make_article(text="Unrelated text with no entity mentions.")
     mock_gliner = MagicMock()
     mock_gliner.extract_entities.return_value = _make_gliner_result(
@@ -141,11 +141,11 @@ def test_wikidata_id_is_none_when_no_context(enricher, make_article):
             with patch("news_kg.entities.search_wikidata") as mock_search:
                 result = enricher(article)
 
-    assert result.entities[0].wikidata_id is None
+    assert result.entities == []
     mock_search.assert_not_called()
 
 
-def test_wikidata_id_is_none_when_search_raises(enricher, article):
+def test_entity_excluded_when_search_raises(enricher, article):
     mock_gliner = MagicMock()
     mock_gliner.extract_entities.return_value = _make_gliner_result(
         people=["Barack Obama"]
@@ -161,7 +161,7 @@ def test_wikidata_id_is_none_when_search_raises(enricher, article):
             ):
                 result = enricher(article)
 
-    assert result.entities[0].wikidata_id is None
+    assert result.entities == []
 
 
 @pytest.mark.live
