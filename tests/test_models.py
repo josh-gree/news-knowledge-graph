@@ -6,16 +6,7 @@ from pydantic import ValidationError
 from news_kg.models import Article, EntityAnnotation, TemporalAnnotation
 
 
-def make_article(**kwargs):
-    defaults = {
-        "text": "Some article text.",
-        "date": datetime(2024, 1, 1, tzinfo=UTC),
-        "url": "https://example.com/article",
-    }
-    return Article(**{**defaults, **kwargs})
-
-
-def test_article_construction():
+def test_article_construction(make_article):
     article = make_article()
     assert article.text == "Some article text."
     assert article.date == datetime(2024, 1, 1, tzinfo=UTC)
@@ -24,7 +15,7 @@ def test_article_construction():
     assert article.entities is None
 
 
-def test_article_with_enrichments():
+def test_article_with_enrichments(make_article):
     article = make_article(
         temporal=TemporalAnnotation(),
         entities=EntityAnnotation(),
@@ -33,7 +24,7 @@ def test_article_with_enrichments():
     assert article.entities is not None
 
 
-def test_article_is_frozen():
+def test_article_is_frozen(make_article):
     article = make_article()
     with pytest.raises(ValidationError):
         article.text = "changed"
@@ -51,13 +42,13 @@ def test_entity_annotation_is_frozen():
         annotation.x = 1  # type: ignore[attr-defined]
 
 
-def test_article_dict_round_trip():
+def test_article_dict_round_trip(make_article):
     article = make_article()
     restored = Article.model_validate(article.model_dump())
     assert restored == article
 
 
-def test_article_dict_round_trip_with_enrichments():
+def test_article_dict_round_trip_with_enrichments(make_article):
     article = make_article(
         temporal=TemporalAnnotation(),
         entities=EntityAnnotation(),
