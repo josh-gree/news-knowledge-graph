@@ -1,3 +1,6 @@
+install-hooks:
+    uv run pre-commit install
+
 test:
     uv run pytest
 
