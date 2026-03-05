@@ -5,7 +5,7 @@ from pathlib import Path
 from news_kg.models import AnyArticle, article_adapter
 
 
-def _article_id(url: str) -> str:
+def article_id(url: str) -> str:
     return hashlib.sha256(url.encode()).hexdigest()
 
 
@@ -19,9 +19,9 @@ class FilesystemStore:
         return self._articles / f"{article_id}.json"
 
     def save(self, article: AnyArticle) -> str:
-        article_id = _article_id(article.url)
-        self._path(article_id).write_text(article.model_dump_json())
-        return article_id
+        aid = article_id(article.url)
+        self._path(aid).write_text(article.model_dump_json())
+        return aid
 
     def exists(self, article_id: str) -> bool:
         return self._path(article_id).exists()

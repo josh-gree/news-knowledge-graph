@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from news_kg.models import EntityAnnotation, TemporalAnnotation
-from news_kg.store import FilesystemStore, _article_id
+from news_kg.models import TemporalAnnotation
+from news_kg.store import FilesystemStore, article_id
 
 
 def test_store_creates_directory(tmp_path: Path) -> None:
@@ -24,7 +24,7 @@ def test_save_and_load_round_trip(tmp_path: Path, make_article) -> None:
 def test_exists_before_and_after_save(tmp_path: Path, make_article) -> None:
     store = FilesystemStore(tmp_path)
     article = make_article()
-    aid = _article_id(article.url)
+    aid = article_id(article.url)
     assert not store.exists(aid)
     store.save(article)
     assert store.exists(aid)
@@ -59,15 +59,15 @@ def test_save_overwrites_existing(tmp_path: Path, make_article) -> None:
     original = make_article()
     aid = store.save(original)
 
-    updated = make_article(temporal=TemporalAnnotation(), entities=EntityAnnotation())
+    updated = make_article(temporal=TemporalAnnotation(), entities=[])
     store.save(updated)
 
     loaded = store.load(aid)
     assert loaded == updated
 
 
-def test_save_returns_article_id(tmp_path: Path, make_article) -> None:
+def test_save_returnsarticle_id(tmp_path: Path, make_article) -> None:
     store = FilesystemStore(tmp_path)
     article = make_article()
     aid = store.save(article)
-    assert aid == _article_id(article.url)
+    assert aid == article_id(article.url)

@@ -16,12 +16,6 @@ class ResolvedEntity(BaseModel):
     wikidata_id: str | None = None
 
 
-class EntityAnnotation(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    entities: list[ResolvedEntity] = []
-
-
 class Article(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -29,7 +23,7 @@ class Article(BaseModel):
     date: datetime
     url: str
     temporal: TemporalAnnotation | None = None
-    entities: EntityAnnotation | None = None
+    entities: list[ResolvedEntity] | None = None
 
 
 class GuardianArticle(Article):

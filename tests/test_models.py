@@ -5,7 +5,6 @@ from pydantic import ValidationError
 
 from news_kg.models import (
     Article,
-    EntityAnnotation,
     TemporalAnnotation,
     article_adapter,
 )
@@ -23,7 +22,7 @@ def test_article_construction(make_article):
 def test_article_with_enrichments(make_article):
     article = make_article(
         temporal=TemporalAnnotation(),
-        entities=EntityAnnotation(),
+        entities=[],
     )
     assert article.temporal is not None
     assert article.entities is not None
@@ -41,12 +40,6 @@ def test_temporal_annotation_is_frozen():
         annotation.x = 1  # type: ignore[attr-defined]
 
 
-def test_entity_annotation_is_frozen():
-    annotation = EntityAnnotation()
-    with pytest.raises(ValidationError):
-        annotation.x = 1  # type: ignore[attr-defined]
-
-
 def test_article_dict_round_trip(make_article):
     article = make_article()
     restored = article_adapter.validate_python(article.model_dump())
@@ -56,7 +49,7 @@ def test_article_dict_round_trip(make_article):
 def test_article_dict_round_trip_with_enrichments(make_article):
     article = make_article(
         temporal=TemporalAnnotation(),
-        entities=EntityAnnotation(),
+        entities=[],
     )
     restored = article_adapter.validate_python(article.model_dump())
     assert restored == article

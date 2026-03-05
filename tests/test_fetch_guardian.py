@@ -1,11 +1,19 @@
 from datetime import UTC, datetime
+from pathlib import Path
 
 import httpx
 import pytest
 import respx
 
-from news_kg.fetch.guardian import _parse_doc_date, fetch_article
+from news_kg.fetch.guardian import (
+    _fetch_feed_urls,
+    _is_article_url,
+    _parse_doc_date,
+    fetch_article,
+    fetch_feed,
+)
 from news_kg.models import GuardianArticle
+from news_kg.store import FilesystemStore
 
 ARTICLE_URL = "https://www.theguardian.com/world/2024/jan/15/some-article-slug"
 
@@ -107,3 +115,100 @@ def test_fetch_article_real_guardian_article():
     assert article.date == datetime(2026, 3, 4, tzinfo=UTC)
     assert article.headline
     assert article.text
+
+
+# --- Feed fetcher tests ---
+
+FEED_URL = "https://www.theguardian.com/world/rss"
+
+ARTICLE_URL_1 = "https://www.theguardian.com/world/2024/jan/15/some-article-slug"
+ARTICLE_URL_2 = "https://www.theguardian.com/uk/2024/feb/10/another-article-slug"
+LIVE_BLOG_URL = "https://www.theguardian.com/world/live/2024/jan/15/some-live-blog"
+AUDIO_URL = "https://www.theguardian.com/world/audio/2024/jan/15/some-audio"
+VIDEO_URL = "https://www.theguardian.com/world/video/2024/jan/15/some-video"
+INTERACTIVE_URL = (
+    "https://www.theguardian.com/world/ng-interactive/2024/jan/15/some-interactive"
+)
+GALLERY_URL = "https://www.theguardian.com/world/gallery/2024/jan/15/some-gallery"
+
+
+def _rss_feed(*urls: str) -> str:
+    items = "".join(f"<item><link>{url}</link></item>" for url in urls)
+    return f"<rss><channel>{items}</channel></rss>"
+
+
+@pytest.mark.parametrize(
+    "url,expected",
+    [
+        (ARTICLE_URL_1, True),
+        (ARTICLE_URL_2, True),
+        (LIVE_BLOG_URL, False),
+        (AUDIO_URL, False),
+        (VIDEO_URL, False),
+        (INTERACTIVE_URL, False),
+        (GALLERY_URL, False),
+    ],
+)
+def test_is_article_url(url, expected):
+    assert _is_article_url(url) is expected
+
+
+@respx.mock
+def test_fetch_feed_urls_filters_non_articles():
+    respx.get(FEED_URL).mock(
+        return_value=httpx.Response(
+            200,
+            text=_rss_feed(ARTICLE_URL_1, LIVE_BLOG_URL, AUDIO_URL, VIDEO_URL),
+        )
+    )
+    urls = _fetch_feed_urls(FEED_URL)
+    assert urls == [ARTICLE_URL_1]
+
+
+@respx.mock
+def test_fetch_feed_skips_already_stored(tmp_path: Path):
+    store = FilesystemStore(tmp_path)
+    existing = GuardianArticle(
+        text="body",
+        date=datetime(2024, 1, 15, tzinfo=UTC),
+        url=ARTICLE_URL_1,
+        headline="h",
+        standfirst="s",
+        byline="b",
+        dateline="d",
+    )
+    store.save(existing)
+
+    respx.get(FEED_URL).mock(
+        return_value=httpx.Response(200, text=_rss_feed(ARTICLE_URL_1))
+    )
+    articles = fetch_feed(FEED_URL, store)
+    assert articles == []
+
+
+@respx.mock
+def test_fetch_feed_swallows_per_article_errors(tmp_path: Path):
+    store = FilesystemStore(tmp_path)
+    respx.get(FEED_URL).mock(
+        return_value=httpx.Response(200, text=_rss_feed(ARTICLE_URL_1, ARTICLE_URL_2))
+    )
+    respx.get(ARTICLE_URL_1).mock(return_value=httpx.Response(500))
+    respx.get(ARTICLE_URL_2).mock(return_value=httpx.Response(200, text=ARTICLE_HTML))
+
+    articles = fetch_feed(FEED_URL, store)
+    assert len(articles) == 1
+    assert articles[0].url == ARTICLE_URL_2
+
+
+@respx.mock
+def test_fetch_feed_returns_guardian_articles(tmp_path: Path):
+    store = FilesystemStore(tmp_path)
+    respx.get(FEED_URL).mock(
+        return_value=httpx.Response(200, text=_rss_feed(ARTICLE_URL_1))
+    )
+    respx.get(ARTICLE_URL_1).mock(return_value=httpx.Response(200, text=ARTICLE_HTML))
+
+    articles = fetch_feed(FEED_URL, store)
+    assert len(articles) == 1
+    assert isinstance(articles[0], GuardianArticle)
+    assert articles[0].url == ARTICLE_URL_1
