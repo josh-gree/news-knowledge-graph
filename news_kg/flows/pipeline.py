@@ -1,11 +1,20 @@
+import logging
 from pathlib import Path
 
 from prefect import flow, task
 
 from news_kg.entities import EntityEnricher
+from news_kg.fetch.guardian import _fetch_feed_urls
 from news_kg.fetch.guardian import fetch_article as _fetch_article
 from news_kg.models import AnyArticle
 from news_kg.store import FilesystemStore
+
+logger = logging.getLogger(__name__)
+
+
+@task
+def fetch_feed_task(feed_url: str) -> list[str]:
+    return _fetch_feed_urls(feed_url)
 
 
 @task
@@ -26,8 +35,15 @@ def save_article_task(article: AnyArticle, root: Path) -> str:
 
 
 @flow
-def run_entity_pipeline(urls: list[str], root: Path) -> list[str]:
-    fetch_futures = [fetch_article_task.submit(url) for url in urls]
-    enrich_futures = [enrich_entities_task.submit(f) for f in fetch_futures]
-    save_futures = [save_article_task.submit(e, root) for e in enrich_futures]
-    return [f.result() for f in save_futures]
+def run_feed_pipeline(feed_url: str, root: Path) -> list[str]:
+    urls = fetch_feed_task(feed_url)
+    article_ids = []
+    for url in urls:
+        try:
+            article = fetch_article_task(url)
+        except Exception:
+            logger.warning("Failed to fetch article, skipping: %s", url)
+            continue
+        enriched = enrich_entities_task(article)
+        article_ids.append(save_article_task(enriched, root))
+    return article_ids
