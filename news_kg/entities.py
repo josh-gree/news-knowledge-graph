@@ -5,7 +5,7 @@ from functools import cache
 
 import dspy
 
-from news_kg.models import AnyArticle, EntityAnnotation, ResolvedEntity
+from news_kg.models import AnyArticle, ResolvedEntity
 from news_kg.utils import extract_sentence_context, load_prompt
 from news_kg.wikidata import search_wikidata
 
@@ -85,7 +85,7 @@ class EntityEnricher(dspy.Module):
         self.max_workers = max_workers
         self.clean = dspy.Predict(_CleanEntities)
 
-    def forward(self, article: AnyArticle) -> EntityAnnotation:
+    def forward(self, article: AnyArticle) -> list[ResolvedEntity]:
         if article.entities is not None:
             return article.entities
 
@@ -150,4 +150,4 @@ class EntityEnricher(dspy.Module):
             for name in all_entities
             if name in resolved_map and resolved_map[name].wikidata_id is not None
         ]
-        return EntityAnnotation(entities=resolved)
+        return resolved

@@ -5,7 +5,7 @@ import pytest
 
 from news_kg.entities import EntityEnricher
 from news_kg.fetch.guardian import fetch_article
-from news_kg.models import EntityAnnotation, ResolvedEntity
+from news_kg.models import ResolvedEntity
 
 _LIVE_URL = "https://www.theguardian.com/world/2026/mar/04/israel-fresh-strikes-tehran-beirut-iran-targets-us-bases-gulf"
 
@@ -34,7 +34,7 @@ def _make_gliner_result(people=None, organisations=None, locations=None):
     }
 
 
-def test_returns_entity_annotation(enricher, article):
+def test_returns_resolved_entities(enricher, article):
     mock_gliner = MagicMock()
     mock_gliner.extract_entities.return_value = _make_gliner_result(
         people=["Barack Obama"]
@@ -62,21 +62,19 @@ def test_returns_entity_annotation(enricher, article):
                     ]
                     result = enricher(article)
 
-    assert isinstance(result, EntityAnnotation)
-    assert len(result.entities) == 1
-    assert result.entities[0].name == "Barack Obama"
-    assert result.entities[0].wikidata_id == "Q76"
+    assert isinstance(result, list)
+    assert len(result) == 1
+    assert result[0].name == "Barack Obama"
+    assert result[0].wikidata_id == "Q76"
 
 
 def test_short_circuits_if_already_enriched(enricher, make_article):
-    existing = EntityAnnotation(
-        entities=[ResolvedEntity(name="Existing Entity", wikidata_id="Q1")]
-    )
+    existing = [ResolvedEntity(name="Existing Entity", wikidata_id="Q1")]
     article = make_article(entities=existing)
 
     result = enricher(article)
 
-    assert result is existing
+    assert result == existing
 
 
 def test_entity_excluded_when_no_match(enricher, article):
@@ -107,7 +105,7 @@ def test_entity_excluded_when_no_match(enricher, article):
                     ]
                     result = enricher(article)
 
-    assert result.entities == []
+    assert result == []
 
 
 def test_entity_excluded_when_no_candidates(enricher, article):
@@ -125,7 +123,7 @@ def test_entity_excluded_when_no_candidates(enricher, article):
                 mock_search.return_value = []
                 result = enricher(article)
 
-    assert result.entities == []
+    assert result == []
 
 
 def test_entity_excluded_when_no_context(enricher, make_article):
@@ -143,7 +141,7 @@ def test_entity_excluded_when_no_context(enricher, make_article):
             with patch("news_kg.entities.search_wikidata") as mock_search:
                 result = enricher(article)
 
-    assert result.entities == []
+    assert result == []
     mock_search.assert_not_called()
 
 
@@ -175,7 +173,7 @@ def test_entity_excluded_when_q_id_hallucinated(enricher, article):
                     ]
                     result = enricher(article)
 
-    assert result.entities == []
+    assert result == []
 
 
 def test_entity_excluded_when_search_raises(enricher, article):
@@ -194,7 +192,7 @@ def test_entity_excluded_when_search_raises(enricher, article):
             ):
                 result = enricher(article)
 
-    assert result.entities == []
+    assert result == []
 
 
 @pytest.mark.live
@@ -208,6 +206,6 @@ def test_enrich_entities_real_article():
     article = fetch_article(_LIVE_URL)
     enricher = EntityEnricher()
     result = enricher(article)
-    assert isinstance(result, EntityAnnotation)
-    assert len(result.entities) > 0
-    assert all(isinstance(e.name, str) and e.name for e in result.entities)
+    assert isinstance(result, list)
+    assert len(result) > 0
+    assert all(isinstance(e.name, str) and e.name for e in result)

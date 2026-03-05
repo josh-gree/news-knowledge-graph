@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from news_kg.models import EntityAnnotation, TemporalAnnotation
+from news_kg.models import TemporalAnnotation
 from news_kg.store import FilesystemStore, article_id
 
 
@@ -59,7 +59,7 @@ def test_save_overwrites_existing(tmp_path: Path, make_article) -> None:
     original = make_article()
     aid = store.save(original)
 
-    updated = make_article(temporal=TemporalAnnotation(), entities=EntityAnnotation())
+    updated = make_article(temporal=TemporalAnnotation(), entities=[])
     store.save(updated)
 
     loaded = store.load(aid)
