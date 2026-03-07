@@ -1,4 +1,5 @@
 .venv/
+jars/
 scratch/
 temp/
 __pycache__/

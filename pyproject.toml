@@ -12,6 +12,7 @@ dependencies = [
     "lxml>=6.0.2",
     "prefect>=3.6.20",
     "pydantic>=2.12.5",
+    "sutime>=1.0.1",
     "typer>=0.24.1",
 ]
 
