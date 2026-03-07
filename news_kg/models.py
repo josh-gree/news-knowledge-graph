@@ -3,10 +3,39 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
+AnchorType = Literal["absolute", "dct", "event"]
+ExpressionType = Literal["DATE", "TIME"]
+ResolutionType = Literal["arithmetic", "coreference", "unresolvable"] | None
+StatusType = Literal["actual", "scheduled", "hypothetical"]
 
-# Stub — fields to be added when temporal enrichment is implemented.
+
+class Event(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    text: str
+    type: ExpressionType
+    anchor: AnchorType
+    anchor_event: str | None
+    anchor_date: str | None
+    value: str | None
+    resolution: ResolutionType
+    coreferent: str | None
+    event: str
+    status: StatusType
+
+
+class MainEvent(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    description: str
+    value: str
+
+
 class TemporalAnnotation(BaseModel):
     model_config = ConfigDict(frozen=True)
+
+    main_event: MainEvent | None = None
+    events: list[Event] = []
 
 
 class ResolvedEntity(BaseModel):

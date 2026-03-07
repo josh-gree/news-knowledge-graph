@@ -6,6 +6,8 @@ from pydantic import ValidationError
 from news_kg.models import (
     Article,
     EntityAnnotation,
+    Event,
+    MainEvent,
     TemporalAnnotation,
     article_adapter,
 )
@@ -73,3 +75,57 @@ def test_article_missing_required_fields():
 
     with pytest.raises(ValidationError):
         Article(text="only text", date=datetime(2024, 1, 1, tzinfo=UTC))  # missing url
+
+
+def make_event(**kwargs):
+    defaults = {
+        "text": "last Tuesday",
+        "type": "DATE",
+        "anchor": "dct",
+        "anchor_event": None,
+        "anchor_date": None,
+        "value": "2024-01-01",
+        "resolution": None,
+        "coreferent": None,
+        "event": "the meeting happened",
+        "status": "actual",
+    }
+    return Event(**{**defaults, **kwargs})
+
+
+def test_event_is_frozen():
+    event = make_event()
+    with pytest.raises(ValidationError):
+        event.text = "changed"  # type: ignore[misc]
+
+
+def test_main_event_is_frozen():
+    main_event = MainEvent(description="Summit begins", value="2024-01-01")
+    with pytest.raises(ValidationError):
+        main_event.description = "changed"  # type: ignore[misc]
+
+
+def test_event_invalid_anchor_type():
+    with pytest.raises(ValidationError):
+        make_event(anchor="invalid")
+
+
+def test_event_invalid_status():
+    with pytest.raises(ValidationError):
+        make_event(status="unknown")
+
+
+def test_temporal_annotation_defaults():
+    annotation = TemporalAnnotation()
+    assert annotation.main_event is None
+    assert annotation.events == []
+
+
+def test_article_dict_round_trip_with_full_temporal(make_article):
+    annotation = TemporalAnnotation(
+        main_event=MainEvent(description="Summit begins", value="2024-01-01"),
+        events=[make_event()],
+    )
+    article = make_article(temporal=annotation, entities=EntityAnnotation())
+    restored = article_adapter.validate_python(article.model_dump())
+    assert restored == article
