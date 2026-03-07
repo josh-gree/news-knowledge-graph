@@ -1,3 +1,4 @@
+# Requires Java and Maven (mvn) to be installed.
 setup:
     #!/usr/bin/env bash
     SUTIME_DIR=$(uv run python -c "import sutime, os; print(os.path.dirname(sutime.__file__))")

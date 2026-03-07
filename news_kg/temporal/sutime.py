@@ -10,6 +10,7 @@ _JARS_DIR = Path(__file__).parents[2] / "jars"
 
 
 def _get_sutime() -> SUTime:
+    # Single-threaded use assumed; no locking around JVM initialisation.
     global _instance
     if _instance is None:
         _instance = SUTime(
@@ -25,11 +26,11 @@ def tag(text: str, doc_date: str) -> list[dict]:
     raw = st.parse(text, reference_date=doc_date)
     return [
         {
-            "text": r["text"],
-            "type": r["type"],
+            "text": r.get("text", ""),
+            "type": r.get("type", ""),
             "value": r.get("value", ""),
-            "start": r["start"],
-            "end": r["end"],
+            "start": r.get("start"),
+            "end": r.get("end"),
         }
         for r in raw
     ]
