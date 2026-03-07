@@ -4,9 +4,18 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
 
-# Stub — fields to be added when temporal enrichment is implemented.
+class Event(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    text: str
+    value: str | None
+
+
 class TemporalAnnotation(BaseModel):
     model_config = ConfigDict(frozen=True)
+
+    main_event: Event | None = None
+    other_events: list[Event] = []
 
 
 class ResolvedEntity(BaseModel):

@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from news_kg.models import (
     Article,
     EntityAnnotation,
+    Event,
     TemporalAnnotation,
     article_adapter,
 )
@@ -73,3 +74,33 @@ def test_article_missing_required_fields():
 
     with pytest.raises(ValidationError):
         Article(text="only text", date=datetime(2024, 1, 1, tzinfo=UTC))  # missing url
+
+
+def make_event(**kwargs):
+    defaults = {
+        "text": "the summit began",
+        "value": "2024-01-01",
+    }
+    return Event(**{**defaults, **kwargs})
+
+
+def test_event_is_frozen():
+    event = make_event()
+    with pytest.raises(ValidationError):
+        event.text = "changed"  # type: ignore[misc]
+
+
+def test_temporal_annotation_defaults():
+    annotation = TemporalAnnotation()
+    assert annotation.main_event is None
+    assert annotation.other_events == []
+
+
+def test_article_dict_round_trip_with_full_temporal(make_article):
+    annotation = TemporalAnnotation(
+        main_event=make_event(),
+        other_events=[make_event(text="last Tuesday", value="2024-01-02")],
+    )
+    article = make_article(temporal=annotation, entities=EntityAnnotation())
+    restored = article_adapter.validate_python(article.model_dump())
+    assert restored == article
