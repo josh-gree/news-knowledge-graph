@@ -1,14 +1,20 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from sutime import SUTime
 
 _instance: SUTime | None = None
+
+_JARS_DIR = Path(__file__).parents[2] / "jars"
 
 
 def _get_sutime() -> SUTime:
     global _instance
     if _instance is None:
-        _instance = SUTime(mark_time_ranges=True, include_range=True)
+        _instance = SUTime(
+            mark_time_ranges=True, include_range=True, jars=str(_JARS_DIR)
+        )
     return _instance
 
 

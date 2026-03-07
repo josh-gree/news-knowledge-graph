@@ -1,7 +1,9 @@
 setup:
     #!/usr/bin/env bash
     SUTIME_DIR=$(uv run python -c "import sutime, os; print(os.path.dirname(sutime.__file__))")
-    mvn dependency:copy-dependencies -f "$SUTIME_DIR/pom.xml" -DoutputDirectory="$SUTIME_DIR/jars" -P english
+    mkdir -p jars
+    mvn dependency:copy-dependencies -f "$SUTIME_DIR/pom.xml" -DoutputDirectory="$(pwd)/jars" -P english
+    cp "$SUTIME_DIR/jars/stanford-corenlp-sutime-python-1.4.0.jar" "$(pwd)/jars/"
 
 install-hooks:
     uv run pre-commit install
