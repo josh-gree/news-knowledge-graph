@@ -1204,6 +1204,22 @@ wheels = [
 ]
 
 [[package]]
+name = "jpype1"
+version = "1.6.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "packaging" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/34/49/6090a131d84b22c6aae13b1853092028b060fd17da1af87c0e42ad69d50f/jpype1-1.6.0.tar.gz", hash = "sha256:2d46b2a14f8f0e6f17d8aa22b4fc3a64b2790851ebf1409ad79a37c698fd6e9a", size = 1057888, upload-time = "2025-07-07T14:04:11.244Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/38/88/2156a27251492169f947850293d9870d49d784f1355fad7e920095636721/jpype1-1.6.0-cp312-cp312-macosx_10_9_universal2.whl", hash = "sha256:5454322887505097c46f41521becf31cda2303f54e35cb42e20f1a180055a558", size = 582187, upload-time = "2025-07-07T13:50:39.034Z" },
+    { url = "https://files.pythonhosted.org/packages/6b/5d/51bde8695cc3eabcc465779f6dc23b149194bbcdcb8d221a9572422053f4/jpype1-1.6.0-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:cf646459023a0dd71b3cc3aeeb977225a93f94c97839bb4e6146977b166c7caf", size = 468341, upload-time = "2025-07-07T13:50:40.739Z" },
+    { url = "https://files.pythonhosted.org/packages/7a/a1/50cdc2bf9e51c0828faabec6fad50d61aada5a57d0bc435f4db0c16eb2ca/jpype1-1.6.0-cp312-cp312-manylinux2014_i686.manylinux_2_17_i686.whl", hash = "sha256:7a98b34bc68a117881382dffa9b02d5e1d0d94325f85d7f564c33cc9e9d2916b", size = 511724, upload-time = "2025-07-07T13:50:42.479Z" },
+    { url = "https://files.pythonhosted.org/packages/c4/a4/6038228e44cbcdb8f96ff2518cd6c577730f31fb62e9f46de7efdfabc2de/jpype1-1.6.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:b56d7b662ce353c7f876e9ff3d4e775918348340795801e1f00c3b6241006264", size = 495897, upload-time = "2025-07-07T13:50:44.018Z" },
+    { url = "https://files.pythonhosted.org/packages/8c/e4/af69d43779da0e49d37d7fd8a4a01bede03f6a3bab450eab1c10cf48e20e/jpype1-1.6.0-cp312-cp312-win_amd64.whl", hash = "sha256:cf41134bc59c28de2721614ed00a34f76f69f2b525583a5c42fee5c7bae05d40", size = 355702, upload-time = "2025-07-07T13:50:45.368Z" },
+]
+
+[[package]]
 name = "json-repair"
 version = "0.58.3"
 source = { registry = "https://pypi.org/simple" }
@@ -1715,6 +1731,7 @@ dependencies = [
     { name = "lxml" },
     { name = "prefect" },
     { name = "pydantic" },
+    { name = "sutime" },
     { name = "typer" },
 ]
 
@@ -1738,6 +1755,7 @@ requires-dist = [
     { name = "lxml", specifier = ">=6.0.2" },
     { name = "prefect", specifier = ">=3.6.20" },
     { name = "pydantic", specifier = ">=2.12.5" },
+    { name = "sutime", specifier = ">=1.0.1" },
     { name = "typer", specifier = ">=0.24.1" },
 ]
 
@@ -2955,6 +2973,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c4/68/79977123bb7be889ad680d79a40f339082c1978b5cfcf62c2d8d196873ac/starlette-0.52.1.tar.gz", hash = "sha256:834edd1b0a23167694292e94f597773bc3f89f362be6effee198165a35d62933", size = 2653702, upload-time = "2026-01-18T13:34:11.062Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/81/0d/13d1d239a25cbfb19e740db83143e95c772a1fe10202dda4b76792b114dd/starlette-0.52.1-py3-none-any.whl", hash = "sha256:0029d43eb3d273bc4f83a08720b4912ea4b071087a3b48db01b7c839f7954d74", size = 74272, upload-time = "2026-01-18T13:34:09.188Z" },
+]
+
+[[package]]
+name = "sutime"
+version = "1.0.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "jpype1" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c6/c9/ddce2da756db37e990379efadf17e3117364a63c7ca97bc50a6824d5f0f0/sutime-1.0.1.tar.gz", hash = "sha256:1f2f653ffe9f74b5fb48e5d01ff3a8cc9307592d280f95f137221f904d815b35", size = 29686, upload-time = "2020-11-03T09:15:02.41Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/74/e7/3ce0509d822392fc2466db5c1780c25c19d69a49c6c6ce3c9b65701ec604/sutime-1.0.1-py3-none-any.whl", hash = "sha256:37f8ed813ec4be03b8fd7ee7993be1d0ce6b5e25a4b1bf842022fda6a3f06884", size = 28726, upload-time = "2020-11-03T09:15:00.799Z" },
 ]
 
 [[package]]
