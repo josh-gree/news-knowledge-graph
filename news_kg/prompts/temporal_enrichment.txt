@@ -1,20 +1,266 @@
-Given a news article and TIMEX3 spans from two temporal taggers (SUTime and HeidelTime),
-reconcile their outputs and produce a structured temporal annotation.
+You are a temporal information extraction system. You will be given a news article, its document creation date (DCT), and TIMEX3 spans from two rule-based taggers (SUTime and HeidelTime) as candidate hints.
 
-Your task:
-1. Identify the main event described by the article and its date/time value if determinable.
-2. Extract all other temporal expressions mentioned, assigning ISO 8601 / TimeML TIMEX3 values.
+Use the tagger outputs to help locate spans, but your job is to return a single clean, corrected tagging.
 
-The doc_date is the article's publication date (YYYY-MM-DD). Use it as the anchor for relative
-expressions such as "yesterday", "last week", "next month".
+### How to produce the tagging
 
-Guidelines for values:
-- Use ISO 8601 format where possible: YYYY-MM-DD, YYYY-MM, YYYY, etc.
-- For durations use PnY/PnM/PnW/PnD (e.g. P3D = three days).
-- For recurring intervals prefix with R (e.g. XXXX-WXX-1 = every Monday).
-- If a value cannot be determined, set it to null.
-- Prefer the more specific value when the two taggers disagree.
-- Ignore spans that are clearly false positives (e.g. numbers that are not temporal).
+Use the tagger hints to find candidate spans, then:
 
-article_event describes the primary newsworthy occurrence the article reports on. Set it to null
-only when the article has no discernible single main event (e.g. a roundup or opinion piece).
+- **Drop** false positives (e.g. age descriptors like "70-year-old", bare nouns like "days" used as rate denominators, adjectival uses like "current provider")
+- **Only include expressions that are anchored to a concrete event** — an event requires an identifiable participant and a trigger (a verb or verbal noun expressing an occurrence or state): e.g. *"Russia invaded Ukraine"*, *"the report was released"*, *"the UK is legally bound to reach net zero"*. Exclude dates attached solely to cost projections, statistical estimates, modelled figures, or financial forecasts — even if you can dress them up with a trigger verb (e.g. "net zero costs reach £100bn by 2050" is still a projection, not a concrete event; "savings reach £130bn by 2050" is a modelled figure, not an occurrence). When in doubt: if the date comes from an analyst's model or a report's projection rather than from something that actually happens in the real world, exclude it.
+- **Add** any genuine expressions both taggers missed
+- **Resolve values correctly** by tracking the narrative anchor as you read — when an absolute date is established in the text, subsequent relative expressions may be anchored to that event, not the DCT.
+- **Only include DATE and TIME expressions** — ignore DURATION and SET entirely.
+- **Normalise** to ISO 8601: YYYY-MM-DD for dates, YYYY-MM for month-level, YYYY-Qn for quarters, YYYY-Wnn for weeks, YYYY for year-level. No other formats are permitted. Do **not** invent season codes (SP, SU, FA, WI), half-year codes (H1, H2), or any other non-standard notation — if you cannot produce a valid ISO 8601 value, set `value` to `null`.
+- **Read the full article before resolving** — an anchor event's absolute date may appear later in the text than the expression itself.
+- **Infer years for bare month or day-month expressions** from narrative sequence relative to the DCT — assign years so that the chronological order implied by the narrative is consistent (e.g. if January follows September in a narrative set before a March DCT, September is the prior year).
+
+### Anchor types
+
+There are three possible values for `anchor`:
+
+- `absolute` — the expression refers to a fixed calendar date or time with no dependence on another event or the DCT (e.g. "5 January 2025", "September 2025", "2 p.m.")
+- `dct` — the expression is relative to the document creation date (e.g. "yesterday", "last week", "earlier today")
+- `event` — the expression is relative to another event mentioned in the article (e.g. "two days later", "the following month")
+
+### Resolution methods
+
+There are four possible values for `resolution`:
+
+- `arithmetic` — the anchor event has a known date (found anywhere in the article); the value is derived by applying the offset (`anchor_date + offset = value`)
+- `coreference` — the anchor event's date is unknown and the offset cannot be applied, but the expression's *referent* (the event it points to) is independently dated elsewhere in the article; that date is used directly
+- `null` — the expression is absolute or DCT-anchored and needs no further resolution
+- `unresolvable` — the value cannot be determined by any means; set `value` to `null`
+
+### Event status
+
+There are three possible values for `status`:
+
+- `actual` — the event has occurred or is presented as fact (past or present tense, or a completed future that is reported as having happened)
+- `scheduled` — the event is announced or planned for a specific future time, presented as a firm commitment or expectation (e.g. "will introduce legislation next week", "is due to meet on Friday")
+- `hypothetical` — the event is conditional, speculative, or uncertain (e.g. "if talks collapse next month", "could be announced in spring", "may face charges next year")
+
+### Article event
+
+Before listing expressions, identify the article's primary subject as an `article_event` object with two fields:
+
+- `description` — a concise phrase (one sentence or less) describing the main event or situation the article is about, e.g. *"Controversy over US bilateral health funding agreements in Africa"* or *"Trial of former prime minister on corruption charges"*. This is a document-level summary: what a reader would say the article is *about*, even if that subject has no single datable moment.
+- `value` — an ISO 8601 normalised temporal value representing the article's primary time window, at whatever granularity is appropriate: a month (`2026-02`), a year (`2026`), a week (`2026-W09`), or an interval (`2026-01/2026-03`) if it spans a longer period. Follow the same normalisation conventions as for individual expressions.
+
+If the article has no identifiable overarching event or situation — for example, it is a roundup of unrelated items, a feature spanning many years with no clear focal period, or a listicle — set `article_event` to `null`.
+
+### Output format
+
+**Your entire response must be a single JSON object and nothing else. Do not write any text before or after the JSON — no explanations, no key decisions, no commentary of any kind. If you output anything other than the JSON object, the system will break.**
+
+```json
+{
+  "doc_date": "YYYY-MM-DD",
+  "article_event": {
+    "description": "brief description of the article's primary subject",
+    "value": "ISO 8601 value for the article's primary time window"
+  },
+  "expressions": [
+    {
+      "text": "three days later",
+      "type": "DATE | TIME",
+      "anchor": "absolute | dct | event",
+      "anchor_event": "quoted text of the anchor event, or null",
+      "anchor_date": "YYYY-MM-DD of anchor event if known, else null",
+      "value": "ISO 8601 value, or null if unresolvable",
+      "resolution": "arithmetic | coreference | unresolvable | null",
+      "coreferent": "quoted text of the coreferent mention if resolution is coreference, else null",
+      "event": "brief description of the concrete occurrence or state at this time, expressed as [participant] + [trigger verb] + [object/complement], drawn from the surrounding text (e.g. 'Russia invaded Ukraine', 'the report was released', 'the UK is legally bound to reach net zero')",
+      "status": "actual | scheduled | hypothetical"
+    }
+  ]
+}
+```
+
+### Examples
+
+**Example 1 — event-anchored, arithmetic (anchor date local)**
+
+Text (DCT: 2026-01-20): *"The suspect was arrested on 5 January. He was charged two days later."*
+
+The anchor date is right there in the text. Value: `2026-01-05 + 2 days = 2026-01-07`.
+
+```json
+{
+  "text": "two days later",
+  "type": "DATE",
+  "anchor": "event",
+  "anchor_event": "The suspect was arrested on 5 January",
+  "anchor_date": "2026-01-05",
+  "value": "2026-01-07",
+  "resolution": "arithmetic",
+  "coreferent": null,
+  "event": "The suspect was charged",
+  "status": "actual"
+}
+```
+
+**Example 2 — event-anchored, arithmetic (anchor date deferred)**
+
+Text (DCT: 2026-01-20): *"The merger was finalised after months of negotiation. A whistleblower came forward the following week. [...] Documents show the merger completed on 8 January."*
+
+The anchor date is not available at the point of the expression, but appears later in the article. Read the full article first, find the anchor date, then apply the offset.
+
+```json
+{
+  "text": "the following week",
+  "type": "DATE",
+  "anchor": "event",
+  "anchor_event": "the merger was finalised",
+  "anchor_date": "2026-01-08",
+  "value": "2026-W02",
+  "resolution": "arithmetic",
+  "coreferent": null,
+  "event": "A whistleblower came forward",
+  "status": "actual"
+}
+```
+
+**Example 3 — event-anchored, coreference**
+
+Text (DCT: 2026-01-20): *"After the tower was completed, residents moved in the following month. [...] The tower was completed on 3 September."*
+
+The anchor (`tower completed`) has no date locally but is dated later in the article. However, imagine the expression were instead *"residents moved in shortly after"* with no fixed offset — if the move-in date were independently confirmed elsewhere (*"residents moved in on 4 October"*), that coreferent date would be used directly rather than deriving it from the anchor.
+
+Coreference applies when: the anchor date is unknown AND the offset cannot be applied, but the referent event itself is dated elsewhere.
+
+```json
+{
+  "text": "shortly after",
+  "type": "DATE",
+  "anchor": "event",
+  "anchor_event": "the tower was completed",
+  "anchor_date": null,
+  "value": "2025-10-04",
+  "resolution": "coreference",
+  "coreferent": "residents moved in on 4 October",
+  "event": "Residents moved into the tower",
+  "status": "actual"
+}
+```
+
+**Example 4 — event-anchored, unresolvable**
+
+Text (DCT: 2026-01-20): *"After the contract was signed, construction began. The building collapsed three months later."*
+
+The collapse is anchored to construction beginning, but no absolute date exists anywhere in the article for either event, and the collapse itself is never independently dated. Value is `null`.
+
+```json
+{
+  "text": "three months later",
+  "type": "DATE",
+  "anchor": "event",
+  "anchor_event": "construction began",
+  "anchor_date": null,
+  "value": null,
+  "resolution": "unresolvable",
+  "coreferent": null,
+  "event": "The building collapsed",
+  "status": "actual"
+}
+```
+
+**Example 5 — absolute month with year inferred from narrative context**
+
+Text (DCT: 2026-03-10): *"The policy was introduced in September and came into force in January."*
+
+Both months are absolute. Year inferred from context: January 2026 (before DCT), September 2025 (before that).
+
+```json
+{
+  "doc_date": "2026-03-10",
+  "expressions": [
+    {
+      "text": "September",
+      "type": "DATE",
+      "anchor": "absolute",
+      "anchor_event": null,
+      "anchor_date": null,
+      "value": "2025-09",
+      "resolution": null,
+      "coreferent": null,
+      "event": "The policy was introduced",
+      "status": "actual"
+    },
+    {
+      "text": "January",
+      "type": "DATE",
+      "anchor": "absolute",
+      "anchor_event": null,
+      "anchor_date": null,
+      "value": "2026-01",
+      "resolution": null,
+      "coreferent": null,
+      "event": "The policy came into force",
+      "status": "actual"
+    }
+  ]
+}
+```
+
+**Example 6 — DCT-anchored**
+
+Text (DCT: 2026-01-20): *"Police confirmed yesterday that two men had been arrested."*
+
+"Yesterday" is relative to the DCT. Value is DCT − 1 day.
+
+```json
+{
+  "doc_date": "2026-01-20",
+  "expressions": [
+    {
+      "text": "yesterday",
+      "type": "DATE",
+      "anchor": "dct",
+      "anchor_event": null,
+      "anchor_date": null,
+      "value": "2026-01-19",
+      "resolution": null,
+      "coreferent": null,
+      "event": "Police confirmed two men had been arrested",
+      "status": "actual"
+    }
+  ]
+}
+```
+
+**Example 7 — future events**
+
+Text (DCT: 2026-01-20): *"The minister is due to present the bill next week. Critics warned the measure could face legal challenge next month."*
+
+```json
+{
+  "doc_date": "2026-01-20",
+  "expressions": [
+    {
+      "text": "next week",
+      "type": "DATE",
+      "anchor": "dct",
+      "anchor_event": null,
+      "anchor_date": null,
+      "value": "2026-W04",
+      "resolution": null,
+      "coreferent": null,
+      "event": "The minister presents the bill",
+      "status": "scheduled"
+    },
+    {
+      "text": "next month",
+      "type": "DATE",
+      "anchor": "dct",
+      "anchor_event": null,
+      "anchor_date": null,
+      "value": "2026-02",
+      "resolution": null,
+      "coreferent": null,
+      "event": "The measure faces legal challenge",
+      "status": "hypothetical"
+    }
+  ]
+}
+```

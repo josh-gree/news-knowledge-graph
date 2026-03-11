@@ -24,8 +24,23 @@ def article(make_article):
     return make_article(text="The summit took place last Tuesday. It ended yesterday.")
 
 
+def _make_expression(event: str, value: str | None, **kwargs) -> _TemporalExpression:
+    defaults = {
+        "text": "last Tuesday",
+        "type": "DATE",
+        "anchor": "dct",
+        "anchor_event": None,
+        "anchor_date": None,
+        "resolution": None,
+        "coreferent": None,
+        "status": "actual",
+    }
+    return _TemporalExpression(event=event, value=value, **{**defaults, **kwargs})
+
+
 def _make_predict_result(article_event=None, expressions=None):
     result = _ExtractionResult(
+        doc_date="2024-01-01",
         article_event=article_event,
         expressions=expressions or [],
     )
@@ -37,7 +52,13 @@ def test_returns_temporal_annotation(enricher, article):
         article_event=_ArticleEvent(
             description="Summit took place", value="2024-01-01"
         ),
-        expressions=[_TemporalExpression(text="last Tuesday", value="2023-12-26")],
+        expressions=[
+            _make_expression(
+                text="last Tuesday",
+                event="The summit took place",
+                value="2023-12-26",
+            )
+        ],
     )
     with patch("news_kg.temporal.enricher.sutime.tag", return_value=[]):
         with patch("news_kg.temporal.enricher.heideltime.tag", return_value=[]):
@@ -46,7 +67,9 @@ def test_returns_temporal_annotation(enricher, article):
 
     assert isinstance(result, TemporalAnnotation)
     assert result.main_event == Event(text="Summit took place", value="2024-01-01")
-    assert result.other_events == [Event(text="last Tuesday", value="2023-12-26")]
+    assert result.other_events == [
+        Event(text="The summit took place", value="2023-12-26")
+    ]
 
 
 def test_short_circuits_if_already_enriched(enricher, make_article):
@@ -63,7 +86,11 @@ def test_short_circuits_if_already_enriched(enricher, make_article):
 def test_main_event_none_when_article_event_null(enricher, article):
     predict_result = _make_predict_result(
         article_event=None,
-        expressions=[_TemporalExpression(text="yesterday", value="2023-12-31")],
+        expressions=[
+            _make_expression(
+                text="yesterday", event="The summit ended", value="2023-12-31"
+            )
+        ],
     )
     with patch("news_kg.temporal.enricher.sutime.tag", return_value=[]):
         with patch("news_kg.temporal.enricher.heideltime.tag", return_value=[]):
@@ -78,9 +105,15 @@ def test_other_events_populated(enricher, article):
     predict_result = _make_predict_result(
         article_event=None,
         expressions=[
-            _TemporalExpression(text="last Tuesday", value="2023-12-26"),
-            _TemporalExpression(text="next month", value="2024-02"),
-            _TemporalExpression(text="three days", value="P3D"),
+            _make_expression(
+                text="last Tuesday", event="The summit began", value="2023-12-26"
+            ),
+            _make_expression(
+                text="next month", event="The review is due", value="2024-02"
+            ),
+            _make_expression(
+                text="yesterday", event="Talks concluded", value="2023-12-31"
+            ),
         ],
     )
     with patch("news_kg.temporal.enricher.sutime.tag", return_value=[]):
@@ -89,9 +122,9 @@ def test_other_events_populated(enricher, article):
                 result = enricher(article)
 
     assert len(result.other_events) == 3
-    assert result.other_events[0] == Event(text="last Tuesday", value="2023-12-26")
-    assert result.other_events[1] == Event(text="next month", value="2024-02")
-    assert result.other_events[2] == Event(text="three days", value="P3D")
+    assert result.other_events[0] == Event(text="The summit began", value="2023-12-26")
+    assert result.other_events[1] == Event(text="The review is due", value="2024-02")
+    assert result.other_events[2] == Event(text="Talks concluded", value="2023-12-31")
 
 
 @pytest.mark.live

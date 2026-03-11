@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 import dspy
 from pydantic import BaseModel
 
@@ -7,18 +9,32 @@ from news_kg.models import AnyArticle, Event, TemporalAnnotation
 from news_kg.temporal import heideltime, sutime
 from news_kg.utils import load_prompt
 
+_AnchorType = Literal["absolute", "dct", "event"]
+_ExpressionType = Literal["DATE", "TIME"]
+_ResolutionType = Literal["arithmetic", "coreference", "unresolvable"] | None
+_StatusType = Literal["actual", "scheduled", "hypothetical"]
+
+
+class _TemporalExpression(BaseModel):
+    text: str
+    type: _ExpressionType
+    anchor: _AnchorType
+    anchor_event: str | None
+    anchor_date: str | None
+    value: str | None
+    resolution: _ResolutionType
+    coreferent: str | None
+    event: str
+    status: _StatusType
+
 
 class _ArticleEvent(BaseModel):
     description: str
     value: str | None
 
 
-class _TemporalExpression(BaseModel):
-    text: str
-    value: str | None
-
-
 class _ExtractionResult(BaseModel):
+    doc_date: str
     article_event: _ArticleEvent | None
     expressions: list[_TemporalExpression]
 
@@ -26,15 +42,13 @@ class _ExtractionResult(BaseModel):
 class _TemporalExtraction(dspy.Signature):
     __doc__ = load_prompt("temporal_enrichment.txt")
 
-    doc_date: str = dspy.InputField(desc="Publication date of the article (YYYY-MM-DD)")
-    article_text: str = dspy.InputField(desc="Full text of the news article")
-    sutime_spans: list[dict] = dspy.InputField(desc="TIMEX3 spans extracted by SUTime")
+    doc_date: str = dspy.InputField(desc="Document creation date (YYYY-MM-DD)")
+    article_text: str = dspy.InputField(desc="Full article text (title + body)")
+    sutime_spans: list[dict] = dspy.InputField(desc="SUTime TIMEX3 candidate spans")
     heideltime_spans: list[dict] = dspy.InputField(
-        desc="TIMEX3 spans extracted by HeidelTime"
+        desc="HeidelTime TIMEX3 candidate spans"
     )
-    result: _ExtractionResult = dspy.OutputField(
-        desc="Structured temporal annotation with main event and other expressions"
-    )
+    result: _ExtractionResult = dspy.OutputField(desc="Extracted temporal expressions")
 
 
 class TemporalEnricher(dspy.Module):
@@ -67,7 +81,9 @@ class TemporalEnricher(dspy.Module):
             )
 
         other_events = [
-            Event(text=expr.text, value=expr.value) for expr in result.expressions
+            Event(text=expr.event, value=expr.value)
+            for expr in result.expressions
+            if expr.value is not None
         ]
 
         return TemporalAnnotation(main_event=main_event, other_events=other_events)
