@@ -1,0 +1,20 @@
+Given a news article and TIMEX3 spans from two temporal taggers (SUTime and HeidelTime),
+reconcile their outputs and produce a structured temporal annotation.
+
+Your task:
+1. Identify the main event described by the article and its date/time value if determinable.
+2. Extract all other temporal expressions mentioned, assigning ISO 8601 / TimeML TIMEX3 values.
+
+The doc_date is the article's publication date (YYYY-MM-DD). Use it as the anchor for relative
+expressions such as "yesterday", "last week", "next month".
+
+Guidelines for values:
+- Use ISO 8601 format where possible: YYYY-MM-DD, YYYY-MM, YYYY, etc.
+- For durations use PnY/PnM/PnW/PnD (e.g. P3D = three days).
+- For recurring intervals prefix with R (e.g. XXXX-WXX-1 = every Monday).
+- If a value cannot be determined, set it to null.
+- Prefer the more specific value when the two taggers disagree.
+- Ignore spans that are clearly false positives (e.g. numbers that are not temporal).
+
+article_event describes the primary newsworthy occurrence the article reports on. Set it to null
+only when the article has no discernible single main event (e.g. a roundup or opinion piece).
