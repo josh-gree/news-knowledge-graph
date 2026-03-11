@@ -4,22 +4,17 @@ from pathlib import Path
 from prefect import flow, task
 
 from news_kg.entities import EntityEnricher
-from news_kg.fetch.guardian import _fetch_feed_urls
-from news_kg.fetch.guardian import fetch_article as _fetch_article
+from news_kg.fetch.guardian import fetch_feed
 from news_kg.models import AnyArticle
 from news_kg.store import FilesystemStore
+from news_kg.temporal.enricher import TemporalEnricher
 
 logger = logging.getLogger(__name__)
 
 
 @task
-def fetch_feed_task(feed_url: str) -> list[str]:
-    return _fetch_feed_urls(feed_url)
-
-
-@task
-def fetch_article_task(url: str) -> AnyArticle:
-    return _fetch_article(url)
+def fetch_feed_task(feed_url: str, root: Path) -> list[AnyArticle]:
+    return fetch_feed(feed_url, FilesystemStore(root))
 
 
 @task
@@ -30,20 +25,27 @@ def enrich_entities_task(article: AnyArticle) -> AnyArticle:
 
 
 @task
+def enrich_temporal_task(article: AnyArticle) -> AnyArticle:
+    enricher = TemporalEnricher()
+    annotation = enricher(article)
+    return article.model_copy(update={"temporal": annotation})
+
+
+@task
 def save_article_task(article: AnyArticle, root: Path) -> str:
     return FilesystemStore(root).save(article)
 
 
 @flow
 def run_feed_pipeline(feed_url: str, root: Path) -> list[str]:
-    urls = fetch_feed_task(feed_url)
+    articles = fetch_feed_task(feed_url, root)
     article_ids = []
-    for url in urls:
+    for article in articles:
         try:
-            article = fetch_article_task(url)
+            enriched = enrich_entities_task(article)
+            enriched = enrich_temporal_task(enriched)
         except Exception:
-            logger.warning("Failed to fetch article, skipping: %s", url)
+            logger.warning("Failed to enrich article, skipping: %s", article.url)
             continue
-        enriched = enrich_entities_task(article)
         article_ids.append(save_article_task(enriched, root))
     return article_ids
